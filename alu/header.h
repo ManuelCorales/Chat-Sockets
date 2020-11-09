@@ -19,17 +19,26 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <mutex>
 #define MENSAJE_MAXIMO 50
 #define MAX_CLIENTS 10
 #define BUF_SIZE 4096
 #define SOCK_PATH       "mi_socket"
 
 using namespace std;
-int leer_de_socket(int s, char buf[]);
+int leer_de_socket(int s);
+void escucharSocket(int s);
 vector<string> split(const string& str, const string& delim);
 
-// struct Client {
-
-//     /* COMPLETAR */
-// };
+struct Cliente {
+    int nSocket;
+    string nombre;
+    Cliente(int nSocketAGuardar, string nombre){
+        nombre = nombre;
+        nSocket = nSocketAGuardar;
+    }
+    void enviar(const char* str){
+        send(nSocket, str, strlen(str), 0);
+    }
+};
 

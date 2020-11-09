@@ -2,6 +2,8 @@
 using namespace std;
 #define PORT 5432
 
+vector<Cliente> clientes;
+
 /* Dado un socket, un nickname y el estado de login, registra un nuevo cliente con el nickname dado si el 
    mismo no se encuentra en uso. 
    En caso contrario, envia un mensaje indicando la falla. Además, actualiza 
@@ -31,28 +33,40 @@ using namespace std;
 
 
 /* Funcion que ejecutan los threads */
-void connection_handler(int socket_desc){
+void connection_handler(int socket_desc, int indice_usuario){
 
-    // int s = *((int*) socket_desc);
     int n;
     char str[MENSAJE_MAXIMO];
-
     /* Pedir login */
     
     string nickname;
-    char s[] = { 'c', 'o', 'd', 'i', 'n', 'g' } ;
-    /* Main loop */
-    send(socket_desc, s, strlen(s), 0);
+    string mensajeNombre = "Decime tu nombre\r\n";
+    bool nombreRepetido;
     while(1) {
 
+        nombreRepetido = false;
         /* leer socket, salir si hubo error*/
-        /* COMPLETAR */
-
+        
+        clientes[indice_usuario].enviar(mensajeNombre.c_str());
         n = recv(socket_desc, str, MENSAJE_MAXIMO, 0);
+        for(int i = 0; i < clientes.size(); i++){
+            if (clientes[i].nombre == string(str)) {
+                nombreRepetido = true;
+                break;
+            }
+        }
+        if(nombreRepetido){
+            clientes[indice_usuario].enviar(string("Ese nombre ya está en uso en el chat\r\n").c_str());
+            continue; 
+        }
+        else {
+            clientes[indice_usuario].nombre = string(str);
+            clientes[indice_usuario].enviar(string("Bienvenido al chat\r\n").c_str());
+            break;
+        }
 
         /* Parsear el buffer recibido*/
         /* COMPLETAR */
-        cout << "aa: " << str << endl;
 
         /* Detectar el tipo de mensaje (crudo(solo texto) o comando interno(/..),
            y ejecutar la funcion correspondiente segun el caso */
@@ -60,20 +74,27 @@ void connection_handler(int socket_desc){
     }
 
     while(1) {
-        /* leer socket, salir si hubo error*/
-        /* COMPLETAR */
+
+        /* Leo del socket, salir si hubo error*/
         n = recv(socket_desc, str, MENSAJE_MAXIMO, 0);
+        string stringADevolver(str);
+        stringADevolver = clientes[indice_usuario].nombre + ": " + stringADevolver + "\r\n";
+
+        /* Envío mensaje a todos */
+        for(int i = 0; i < clientes.size(); i++){
+            clientes[i].enviar(stringADevolver.c_str());
+        }
 
         /* Parsear el buffer recibido*/
         /* COMPLETAR */
-        cout << "El mensaje es: " << str << endl;
+        cout << clientes[indice_usuario].nombre << ": " << str << endl;
 
+        /* Limpio la variable str*/
+        memset(str, 0, MENSAJE_MAXIMO);
         /* Detectar el tipo de mensaje (crudo(solo texto) o comando interno(/..),
            y ejecutar la funcion correspondiente segun el caso */
         /* COMPLETAR */
     }
-   
-    // return NULL;  
 }
 
 
@@ -109,10 +130,14 @@ int connection_setup(){
     return listening_socket;
 }
 
+void aceptarCliente(){
+
+}
 
 int main(void)
 {
     struct sockaddr_un remote;
+    mutex mtxRegistroUsuario;
     int t = sizeof(remote);
     int i = 0;
     thread threads[MAX_CLIENTS];
@@ -125,7 +150,11 @@ int main(void)
             perror("aceptando la conexión entrante");
             exit(1);
         }
-        threads[i] = thread(connection_handler, s1);
+        
+        mtxRegistroUsuario.lock();
+        clientes.push_back(Cliente(s1, ""));
+        mtxRegistroUsuario.unlock();
+        threads[i] = thread(connection_handler, s1, clientes.size() - 1);
         i++;
     }
 

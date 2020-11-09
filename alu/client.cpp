@@ -4,9 +4,8 @@ using namespace std;
 
 // Funcion para establecer la conexion del cliente con el servidor.
 // Devuelve el socket descriptor de la conexion
-
+mutex mtxThreadEscuchaInicializado;
 int connection_setup(){
-
     int socket_fd;
     int len;
     struct sockaddr_in  remote;
@@ -43,17 +42,23 @@ int main(void){
 
     /* Loop principal que envía mensajes al servidor */
     string msg;
-
+    mtxThreadEscuchaInicializado.lock();
+    thread threadEscuchador(escucharSocket, socket_fd);
+    mtxThreadEscuchaInicializado.lock();
     while(1) {
-        cout << "> ";
         getline(cin, msg);
         if(send(socket_fd, msg.data(), msg.length(), 0) < 0) {
             perror("Sending to server");
             exit(1);
         }
     }
-
     /* Cerrar el socket. */
     close(socket_fd);
+}
 
+void escucharSocket(int s){
+    while(1){
+        leer_de_socket(s);
+        mtxThreadEscuchaInicializado.unlock();
+    }
 }

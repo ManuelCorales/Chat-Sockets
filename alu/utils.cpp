@@ -3,17 +3,19 @@
 /* Lee un mensaje del socket s y lo guarda en buf. Tener en cuenta que posiblemente sea necesario
    agregar el caracter de terminacion */
    
-int leer_de_socket(int s, char buf[]) {
+int leer_de_socket(int s) {
     /* COMPLETAR */
     int n;
-    n = recv(s, buf, MENSAJE_MAXIMO, 0);
+    char str[MENSAJE_MAXIMO];
+    n = recv(s, str, MENSAJE_MAXIMO, 0);
     if (n == 0) 
         return -1;
     if (n < 0) { 
     	perror("recibiendo");
     	return 0;
     }
-    buf[n] = '\0'; /* Agregar caracter de fin de cadena a lo recibido. */
+    str[n] = '\0'; /* Agregar caracter de fin de cadena a lo recibido. */
+    printf("%s", str);
     return 0;
 }
 

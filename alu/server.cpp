@@ -3,7 +3,7 @@ using namespace std;
 #define PORT 5432
 
 vector<Cliente> clientes;
-
+int cantidadMensajes;
 /* Dado un socket, un nickname y el estado de login, registra un nuevo cliente con el nickname dado si el 
    mismo no se encuentra en uso. 
    En caso contrario, envia un mensaje indicando la falla. Además, actualiza 
@@ -31,6 +31,25 @@ vector<Cliente> clientes;
 //     /* COMPLETAR */
 // }
 
+/*  */
+void ejecutarComando(string comando, int indice_usuario){
+    mutex mtxLecturaClientes;
+    string resultadoComando;
+    // Devuelve al usuario el listado de todos los usuarios conectados
+    if(comando == "/list"){
+        mtxLecturaClientes.lock();
+        resultadoComando = "Las personas activas en el chat son: \r\n";
+        for(int i = 0; i < clientes.size(); i ++){
+            resultadoComando += clientes[i].nombre + "\r\n";
+        }
+        mtxLecturaClientes.unlock();
+    } else if(comando == "/cantmensajes") {
+        resultadoComando = "La cantidad de mensajes totales es: " + to_string(cantidadMensajes) + "\r\n";
+    } else {
+        resultadoComando = "Comando no reconocido \r\n";
+    }
+    clientes[indice_usuario].enviar(resultadoComando.c_str());
+}
 
 /* Funcion que ejecutan los threads */
 void connection_handler(int socket_desc, int indice_usuario){
@@ -38,7 +57,7 @@ void connection_handler(int socket_desc, int indice_usuario){
     int n;
     char str[MENSAJE_MAXIMO];
     /* Pedir login */
-    
+    mutex mtxSumaCantidadMensajes;
     string nickname;
     string mensajeNombre = "Decime tu nombre\r\n";
     bool nombreRepetido;
@@ -72,28 +91,28 @@ void connection_handler(int socket_desc, int indice_usuario){
            y ejecutar la funcion correspondiente segun el caso */
         /* COMPLETAR */
     }
-
+    memset(str, 0, MENSAJE_MAXIMO);
     while(1) {
 
         /* Leo del socket, salir si hubo error*/
         n = recv(socket_desc, str, MENSAJE_MAXIMO, 0);
-        string stringADevolver(str);
-        stringADevolver = clientes[indice_usuario].nombre + ": " + stringADevolver + "\r\n";
-
-        /* Envío mensaje a todos */
-        for(int i = 0; i < clientes.size(); i++){
-            clientes[i].enviar(stringADevolver.c_str());
+        
+        string mensaje(str);
+        if(mensaje.substr(0, 1) == "/"){
+            ejecutarComando(mensaje, indice_usuario);
+        } else {
+            mtxSumaCantidadMensajes.lock();
+            cantidadMensajes += 1;
+            mtxSumaCantidadMensajes.unlock();
+            mensaje = clientes[indice_usuario].nombre + ": " + mensaje + "\r\n";
+            for(int i = 0; i < clientes.size(); i++){
+                clientes[i].enviar(mensaje.c_str());
+            }
+            cout << clientes[indice_usuario].nombre << ": " << str << endl;
         }
-
-        /* Parsear el buffer recibido*/
-        /* COMPLETAR */
-        cout << clientes[indice_usuario].nombre << ": " << str << endl;
-
+        
         /* Limpio la variable str*/
         memset(str, 0, MENSAJE_MAXIMO);
-        /* Detectar el tipo de mensaje (crudo(solo texto) o comando interno(/..),
-           y ejecutar la funcion correspondiente segun el caso */
-        /* COMPLETAR */
     }
 }
 

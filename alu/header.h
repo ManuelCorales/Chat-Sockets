@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <map>
 #include <mutex>
 #define MENSAJE_MAXIMO 50
 #define MAX_CLIENTS 10

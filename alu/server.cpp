@@ -4,6 +4,8 @@ using namespace std;
 
 vector<Cliente> clientes;
 int cantidadMensajes;
+mutex mtxModificacionClientes;
+
 /* Dado un socket, un nickname y el estado de login, registra un nuevo cliente con el nickname dado si el 
    mismo no se encuentra en uso. 
    En caso contrario, envia un mensaje indicando la falla. Además, actualiza 
@@ -33,22 +35,36 @@ int cantidadMensajes;
 
 /*  */
 void ejecutarComando(string comando, int indice_usuario){
-    mutex mtxLecturaClientes;
     string resultadoComando;
     // Devuelve al usuario el listado de todos los usuarios conectados
     if(comando == "/list"){
-        mtxLecturaClientes.lock();
+        mtxModificacionClientes.lock();
         resultadoComando = "Las personas activas en el chat son: \r\n";
         for(int i = 0; i < clientes.size(); i ++){
             resultadoComando += clientes[i].nombre + "\r\n";
         }
-        mtxLecturaClientes.unlock();
+        mtxModificacionClientes.unlock();
     } else if(comando == "/cantmensajes") {
         resultadoComando = "La cantidad de mensajes totales es: " + to_string(cantidadMensajes) + "\r\n";
     } else {
         resultadoComando = "Comando no reconocido \r\n";
     }
     clientes[indice_usuario].enviar(resultadoComando.c_str());
+}
+
+
+/* Busca al cliente */
+Cliente traerClientePorNombre(string nombre){
+    cout << "El size es: " << clientes.size() << endl;
+    cout << 58 << clientes[0].nombre << endl;
+    for(int i = 0; i < clientes.size(); i++){
+        if (clientes[i].nombre == nombre) {
+
+            return clientes[i];
+        }
+    }
+    cout << "Devuelvo cliente vacío" << endl;
+    return Cliente(-1, "");
 }
 
 /* Funcion que ejecutan los threads */
@@ -60,14 +76,18 @@ void connection_handler(int socket_desc, int indice_usuario){
     mutex mtxSumaCantidadMensajes;
     string nickname;
     string mensajeNombre = "Decime tu nombre\r\n";
+    string nombre = "";
     bool nombreRepetido;
     while(1) {
 
         nombreRepetido = false;
-        /* leer socket, salir si hubo error*/
         
-        clientes[indice_usuario].enviar(mensajeNombre.c_str());
+        send(socket_desc, mensajeNombre.c_str(), strlen(mensajeNombre.c_str()), 0);
         n = recv(socket_desc, str, MENSAJE_MAXIMO, 0);
+        if (n == 0){
+            mtxModificacionClientes.lock();
+        }
+
         for(int i = 0; i < clientes.size(); i++){
             if (clientes[i].nombre == string(str)) {
                 nombreRepetido = true;
@@ -75,28 +95,26 @@ void connection_handler(int socket_desc, int indice_usuario){
             }
         }
         if(nombreRepetido){
-            clientes[indice_usuario].enviar(string("Ese nombre ya está en uso en el chat\r\n").c_str());
+            cout << "Entré a repetido" << endl;
+            string mensajeADevolver = "Ese nombre ya está en uso en el chat\r\n";
+            send(socket_desc, mensajeADevolver.c_str(), strlen(mensajeADevolver.c_str()), 0);
             continue; 
         }
         else {
-            clientes[indice_usuario].nombre = string(str);
-            clientes[indice_usuario].enviar(string("Bienvenido al chat\r\n").c_str());
+            cout << "Entré a no repetido" << endl;
+            nombre = string(str);
+            cout << 102 << nombre << endl;
+            clientes.push_back(Cliente(socket_desc, nombre));
+            cout << 103 << traerClientePorNombre(nombre).nombre << endl;
+            traerClientePorNombre(nombre).enviar(string("Bienvenido al chat\r\n").c_str());
             break;
         }
-
-        /* Parsear el buffer recibido*/
-        /* COMPLETAR */
-
-        /* Detectar el tipo de mensaje (crudo(solo texto) o comando interno(/..),
-           y ejecutar la funcion correspondiente segun el caso */
-        /* COMPLETAR */
     }
     memset(str, 0, MENSAJE_MAXIMO);
     while(1) {
 
         /* Leo del socket, salir si hubo error*/
         n = recv(socket_desc, str, MENSAJE_MAXIMO, 0);
-        
         string mensaje(str);
         if(mensaje.substr(0, 1) == "/"){
             ejecutarComando(mensaje, indice_usuario);
@@ -108,7 +126,7 @@ void connection_handler(int socket_desc, int indice_usuario){
             for(int i = 0; i < clientes.size(); i++){
                 clientes[i].enviar(mensaje.c_str());
             }
-            cout << clientes[indice_usuario].nombre << ": " << str << endl;
+            cout << traerClientePorNombre(nombre).nombre << ": " << str << endl;
         }
         
         /* Limpio la variable str*/
@@ -170,9 +188,9 @@ int main(void)
             exit(1);
         }
         
-        mtxRegistroUsuario.lock();
-        clientes.push_back(Cliente(s1, ""));
-        mtxRegistroUsuario.unlock();
+        // mtxRegistroUsuario.lock();
+        // // clientes.push_back(Cliente(s1, ""));
+        // mtxRegistroUsuario.unlock();
         threads[i] = thread(connection_handler, s1, clientes.size() - 1);
         i++;
     }

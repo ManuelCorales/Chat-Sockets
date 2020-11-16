@@ -48,7 +48,7 @@ int main(void){
     while(1) {
         getline(cin, msg);
         if(send(socket_fd, msg.data(), msg.length(), 0) < 0) {
-            perror("Sending to server");
+            perror("Se cerró el socket");
             exit(1);
         }
     }
@@ -58,7 +58,11 @@ int main(void){
 
 void escucharSocket(int s){
     while(1){
-        leer_de_socket(s);
+        if(leer_de_socket(s) < 0) {
+            close(s);
+            cout << "Se cerró el servidor" << endl;
+            return;
+        }
         mtxThreadEscuchaInicializado.unlock();
     }
 }

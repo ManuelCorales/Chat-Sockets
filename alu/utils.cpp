@@ -2,7 +2,6 @@
 
 /* Lee un mensaje del socket s y lo guarda en buf. Tener en cuenta que posiblemente sea necesario
    agregar el caracter de terminacion */
-   
 int leer_de_socket(int s) {
     /* COMPLETAR */
     int n;
@@ -18,15 +17,3 @@ int leer_de_socket(int s) {
     printf("%s", str);
     return 0;
 }
-
-
-
-
-/* Dado un string y un delimitador como " ", devuelve un vector de strings donde los elementos son los tokens que
-   resultan de la separación segun el delimitador. */
-
-// vector<string> split(const string& str, const string& delim)
-// {
-//      /* COMPLETAR */
-// }
-
